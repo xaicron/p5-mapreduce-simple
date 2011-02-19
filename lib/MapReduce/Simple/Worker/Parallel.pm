@@ -59,7 +59,7 @@ sub run_reducer {
     while ( my ( $key, $value ) = each %$data ) {
         my $pid = $pm->start and next;
         my $rv = $reducer->run( $key, $value );
-        $self->store_db( $key, [ $rv ] );
+        $self->store_db( $key, $rv );
 
         $pm->finish;
     }
@@ -69,16 +69,13 @@ sub run_reducer {
     my $rs = $self->load_db;
     $self->finalize_temp_db;
 
-    return +{
-        map { $_ => @{$rs->{$_}} } keys %$rs
-    };
+    return $rs;
 }
 
 sub temp_dbh {
     my $self = shift;
     my $dbh  = DBI->connect( 'dbi:SQLite:dbname=' . $self->tmp_file,
-        "", "",
-        +{ AutoCommit => 1, RaiseError => 1 } );
+        "", "", +{ AutoCommit => 1, RaiseError => 1 } );
     return $dbh;
 }
 
@@ -101,7 +98,7 @@ sub finalize_temp_db {
 
 sub store_db {
     my ( $self, $key, $rv ) = @_;
-    my $serialized = Storable::nfreeze($rv);
+    my $serialized = Storable::nfreeze( [$rv] );
 
     try {
         my $dbh = $self->temp_dbh;
@@ -117,9 +114,9 @@ sub load_db {
     my $self = shift;
 
     my $dbh = $self->temp_dbh;
-    my $rv = $dbh->selectall_arrayref('SELECT key, value FROM mapreduce_data');
+    my $rv  = $dbh->selectall_arrayref('SELECT key, value FROM mapreduce_data');
     my $rs  = +{
-        map { $_->[0] => Storable::thaw( $_->[1] ) }
+        map { $_->[0] => Storable::thaw( $_->[1] )->[0] }
           @{ $dbh->selectall_arrayref('SELECT key, value FROM mapreduce_data')
           },
     };
