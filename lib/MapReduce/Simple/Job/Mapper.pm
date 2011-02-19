@@ -3,8 +3,6 @@ package MapReduce::Simple::Job::Mapper;
 use strict;
 use warnings;
 use parent qw(MapReduce::Simple::Job);
-use Carp;
-use Try::Tiny;
 
 our $VERSION = '0.01';
 
@@ -13,6 +11,12 @@ sub new {
 
     $opts                ||= +{};
     $opts->{identifier}  ||= 'mapper';
+    if (!$opts->{worker} && $opts->{class}) {
+        $opts->{worker} = +{
+            class => delete $opts->{class},
+            args  => delete $opts->{args} || {},
+        };
+    }
 
     $class->SUPER::new( $code, $opts );
 }

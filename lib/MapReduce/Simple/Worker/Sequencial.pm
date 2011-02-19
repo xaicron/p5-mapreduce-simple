@@ -9,18 +9,18 @@ our $VERSION = '0.01';
 sub new {
     my ( $class, $args ) = @_;
     $args ||= +{};
-    $class->SUPER::new( %$args );
+    $class->SUPER::new(%$args);
 }
 
 sub run_mapper {
     my ( $self, $mapper, $data ) = @_;
     my $rs = +{};
-    while ( my ($key, $value) = each %$data ) {
-	my $rv = $mapper->run( $key, $value );
-	while ( my ( $k, $v ) = splice(@$rv, 0, 2) ) {
-	    $rs->{$k} ||= [];
-	    push(@{$rs->{$k}}, $v);
-	}
+    while ( my ( $key, $value ) = each %$data ) {
+        my $rv = $mapper->run( $key, $value );
+        while ( my ( $k, $v ) = splice( @$rv, 0, 2 ) ) {
+            $rs->{$k} ||= [];
+            push( @{ $rs->{$k} }, $v );
+        }
     }
     return $rs;
 }
@@ -28,9 +28,9 @@ sub run_mapper {
 sub run_reducer {
     my ( $self, $reducer, $data ) = @_;
     my $rs = +{};
-    while ( my ($key, $value) = each %$data ) {
-	$value = $reducer->run( $key, $value );
-	$rs->{$key} = $value;
+    while ( my ( $key, $value ) = each %$data ) {
+        $value = $reducer->run( $key, $value );
+        $rs->{$key} = $value;
     }
     return $rs;
 }

@@ -3,18 +3,11 @@ name 'MapReduce-Simple';
 all_from 'lib/MapReduce/Simple.pm';
 
 requires 'parent';
-requires 'Carp';
 requires 'Class::Accessor::Fast';
-requires 'Data::Dumper';
-requires 'Data::Util';
 requires 'DBD::SQLite';
 requires 'DBI';
-requires 'Exporter';
-requires 'File::Temp';
 requires 'Parallel::ForkManager';
-requires 'String::RewritePrefix';
 requires 'Try::Tiny';
-requires 'UNIVERSAL::require';
 
 tests 't/*.t';
 author_tests 'xt';

@@ -13,6 +13,12 @@ sub new {
 
     $opts                ||= +{};
     $opts->{identifier}  ||= 'reducer';
+    if (!$opts->{worker} && $opts->{class}) {
+        $opts->{worker} = +{
+            class => delete $opts->{class},
+            args  => delete $opts->{args} || {},
+        };
+    }
 
     $class->SUPER::new( $code, $opts );
 }

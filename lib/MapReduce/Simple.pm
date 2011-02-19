@@ -5,45 +5,42 @@ use warnings;
 use parent qw(Class::Accessor::Fast);
 use Carp;
 use Exporter qw(import);
-use Data::Util qw(is_invocant);
-use String::RewritePrefix;
-use Try::Tiny;
-use UNIVERSAL::require;
+use Class::Load qw(load_class);
 
 use MapReduce::Simple::Job::Mapper;
 use MapReduce::Simple::Job::Reducer;
 
-our $VERSION = '0.01';
-our $MAPPER_CLASS = 'MapReduce::Simple::Job::Mapper';
-our $REDUCER_CLASS = 'MapReduce::Simple::Job::Reducer';
-our @EXPORT_OK = qw(mapper reducer);
-our %EXPORT_TAGS = ( all => [ @EXPORT_OK ] );
+our $VERSION       = '0.01';
+our $JOB_PREFIX    = 'MapReduce::Simple::Job';
+our $WORKER_PREFIX = 'MapReduce::Simple::Worker';
+our $MAPPER_CLASS  = $JOB_PREFIX.'::Mapper';
+our $REDUCER_CLASS = $JOB_PREFIX.'::Reducer';
+our @EXPORT_OK     = qw(mapper reducer);
+our %EXPORT_TAGS   = ( all => [@EXPORT_OK] );
 
 __PACKAGE__->mk_accessors(qw/jobs/);
 
 sub new {
     my ( $class, %args ) = @_;
-    $class->SUPER::new(+{
-	jobs => $args{jobs} || [],
-    });
+    $class->SUPER::new( +{ jobs => $args{jobs} || [], } );
 }
 
 sub add_job {
     my ( $self, $job ) = @_;
-    push(@{$self->{jobs}}, $job);
+    push( @{ $self->{jobs} }, $job );
     $self;
 }
 
 sub run {
-    my ($self, $data) = @_;
+    my ( $self, $data ) = @_;
 
-    for my $job ( @{$self->{jobs}} ) {
-	if ( $job->isa('MapReduce::Simple::Job::Mapper') ) {
-	    $data = $self->run_mapper( $job, $data );
-	}
-	else {
-	    $data = $self->run_reducer( $job, $data );
-	}
+    for my $job ( @{ $self->{jobs} } ) {
+        if ( $job->isa('MapReduce::Simple::Job::Mapper') ) {
+            $data = $self->run_mapper( $job, $data );
+        }
+        else {
+            $data = $self->run_reducer( $job, $data );
+        }
     }
 
     return $data;
@@ -63,36 +60,32 @@ sub run_reducer {
 
 sub create_worker {
     my ( $self, $worker_config ) = @_;
-    my ( $worker_class ) = String::RewritePrefix->rewrite(
-	+{ '' => 'MapReduce::Simple::Worker::', '+' => '' },
-	$worker_config->{class},
-    );
-    _ensure_class_loaded($worker_class)->new( $worker_config->{args} );
+    my $worker_class = $worker_config->{class};
+    _ensure_class_loaded($worker_class, $WORKER_PREFIX)->new( $worker_config->{args} );
 }
 
 sub mapper (&;%) {
     my ( $code, %opts ) = @_;
     my $mapper_class = delete $opts{mapper_class} || $MAPPER_CLASS;
-    _ensure_class_loaded( $mapper_class )->new( $code, \%opts );
+    _ensure_class_loaded($mapper_class, $JOB_PREFIX)->new( $code, \%opts );
 }
 
 sub reducer (&;%) {
     my ( $code, %opts ) = @_;
     my $reducer_class = delete $opts{reducer_class} || $REDUCER_CLASS;
-    _ensure_class_loaded( $reducer_class )->new( $code, \%opts );
+    _ensure_class_loaded($reducer_class, $JOB_PREFIX)->new( $code, \%opts );
 }
 
 sub _ensure_class_loaded {
-    my ( $class_name ) = @_;
-    unless ( is_invocant($class_name) ) {
-	try {
-	    $class_name->require;
-	}
-	catch {
-	    croak $_;
-	}
+    my ( $class, $prefix ) = @_;
+
+    unless ( $class =~ s/^\+// || $class =~ /^$prefix/ ) {
+        $class = "$prefix\::$class";
     }
-    return $class_name;
+
+    load_class($class);
+
+    return $class;
 }
 
 1;
